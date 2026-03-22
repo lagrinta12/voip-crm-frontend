@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoIP CRM</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f1a;color:#fff;min-height:100vh}
+.app{display:flex;min-height:100vh}
+.sidebar{width:220px;background:#1a1a2e;padding:20px 0;display:flex;flex-direction:column;border-right:1px solid #2d2d4e}
+.sidebar-logo{padding:0 20px 20px;font-size:20px;font-weight:700;color:#7c3aed;border-bottom:1px solid #2d2d4e;margin-bottom:10px}
+.sidebar-item{padding:12px 20px;cursor:pointer;display:flex;align-items:center;gap:10px;color:#9ca3af;transition:all .2s;font-size:14px}
+.sidebar-item:hover,.sidebar-item.active{background:#7c3aed22;color:#fff;border-left:3px solid #7c3aed}
+.main{flex:1;overflow:auto}
+.topbar{background:#1a1a2e;padding:15px 25px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #2d2d4e}
+.topbar-title{font-size:18px;font-weight:600}
+.user-info{display:flex;align-items:center;gap:10px;font-size:14px;color:#9ca3af}
+.badge{background:#7c3aed;color:#fff;padding:3px 10px;border-radius:20px;font-size:12px}
+.content{padding:25px}
+.card{background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #2d2d4e}
+.btn{padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s}
+.btn-primary{background:#7c3aed;color:#fff}.btn-primary:hover{background:#6d28d9}
+.btn-danger{background:#ef4444;color:#fff}.btn-danger:hover{background:#dc2626}
+.btn-success{background:#10b981;color:#fff}.btn-success:hover{background:#059669}
+.btn-sm{padding:6px 12px;font-size:12px}
+.input{width:100%;padding:10px 14px;background:#0f0f1a;border:1px solid #2d2d4e;border-radius:8px;color:#fff;font-size:14px;outline:none}
+.input:focus{border-color:#7c3aed}
+.label{display:block;margin-bottom:6px;font-size:13px;color:#9ca3af}
+.form-group{margin-bottom:16px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}
+.stat-card{background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #2d2d4e;text-align:center}
+.stat-value{font-size:32px;font-weight:700;color:#7c3aed}
+.stat-label{font-size:13px;color:#9ca3af;margin-top:5px}
+.table{width:100%;border-collapse:collapse;font-size:14px}
+.table th{padding:12px;text-align:left;color:#9ca3af;border-bottom:1px solid #2d2d4e;font-weight:500}
+.table td{padding:12px;border-bottom:1px solid #1f1f3a}
+.table tr:hover td{background:#ffffff08}
+.dialer{display:flex;flex-direction:column;align-items:center;padding:30px}
+.display{background:#0f0f1a;border:2px solid #7c3aed;border-radius:12px;padding:15px 20px;font-size:28px;letter-spacing:4px;text-align:center;min-width:280px;min-height:60px;margin-bottom:20px;color:#fff;font-family:monospace}
+.keypad{display:grid;grid-template-columns:repeat(3,80px);gap:10px;margin-bottom:20px}
+.key{width:80px;height:80px;background:#1a1a2e;border:1px solid #2d2d4e;border-radius:12px;font-size:22px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.key:hover{background:#7c3aed;border-color:#7c3aed;transform:scale(1.05)}
+.key:active{transform:scale(0.95)}
+.key-sub{font-size:9px;color:#9ca3af;margin-top:2px}
+.call-btn{width:80px;height:80px;border-radius:50%;border:none;font-size:28px;cursor:pointer;transition:all .2s}
+.call-btn.green{background:#10b981}.call-btn.green:hover{background:#059669}
+.call-btn.red{background:#ef4444}.call-btn.red:hover{background:#dc2626}
+.call-controls{display:flex;gap:20px;align-items:center}
+.timer{font-size:20px;font-family:monospace;color:#7c3aed;margin:10px 0}
+.login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0f0f1a}
+.login-card{background:#1a1a2e;border-radius:16px;padding:40px;width:380px;border:1px solid #2d2d4e}
+.login-title{font-size:28px;font-weight:700;text-align:center;margin-bottom:8px;color:#7c3aed}
+.login-sub{text-align:center;color:#9ca3af;margin-bottom:30px;font-size:14px}
+.error-msg{background:#ef444422;border:1px solid #ef4444;color:#ef4444;padding:10px;border-radius:8px;margin-bottom:15px;font-size:13px}
+.modal-overlay{position:fixed;inset:0;background:#00000080;display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal{background:#1a1a2e;border-radius:16px;padding:30px;width:480px;max-width:90vw;border:1px solid #2d2d4e}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:20px}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;margin:2px}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.status-available{background:#10b981}.status-busy{background:#f59e0b}.status-offline{background:#6b7280}.status-on_call{background:#ef4444}
+.select{width:100%;padding:10px 14px;background:#0f0f1a;border:1px solid #2d2d4e;border-radius:8px;color:#fff;font-size:14px;outline:none}
+.select:focus{border-color:#7c3aed}
+@media(max-width:768px){.sidebar{display:none}.grid-4{grid-template-columns:1fr 1fr}.grid-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const API = '/api';
+let authToken = localStorage.getItem('voip_token');
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: 'Bearer ' + authToken } : {}), ...(opts.headers || {}) }
+  });
+  if (res.status === 401) { localStorage.removeItem('voip_token'); authToken = null; window.location.hash = '#login'; return null; }
+  return res.json();
+}
+
+// ===== LOGIN =====
+function Login({ onLogin }) {
+  const [form, setForm] = useState({ username: '', password: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setLoading(true); setError('');
+    try {
+      const data = await apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(form) });
+      if (data && data.token) {
+        localStorage.setItem('voip_token', data.token);
+        authToken = data.token;
+        onLogin(data.user);
+      } else setError(data?.error || 'Erreur de connexion');
+    } catch(e) { setError('Erreur réseau'); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="login-page">
+      <div className="login-card">
+        <div className="login-title">📞 VoIP CRM</div>
+        <div className="login-sub">Connectez-vous à votre espace</div>
+        {error && <div className="error-msg">{error}</div>}
+        <form onSubmit={submit}>
+          <div className="form-group">
+            <label className="label">Nom d'utilisateur</label>
+            <input className="input" value={form.username} onChange={e => setForm({...form, username: e.target.value})} placeholder="admin" required />
+          </div>
+          <div className="form-group">
+            <label className="label">Mot de passe</label>
+            <input className="input" type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder="••••••••" required />
+          </div>
+          <button className="btn btn-primary" style={{width:'100%',padding:'14px'}} disabled={loading}>
+            {loading ? 'Connexion...' : 'Se connecter'}
+          </button>
+        </form>
+        <div style={{textAlign:'center',marginTop:20,fontSize:12,color:'#6b7280'}}>
+          admin/admin123 · agent1/agent123
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== DIALER DTMF =====
+function Dialer({ user }) {
+  const [number, setNumber] = useState('');
+  const [callActive, setCallActive] = useState(false);
+  const [callTime, setCallTime] = useState(0);
+  const [callId, setCallId] = useState(null);
+  const [callerIds, setCallerIds] = useState([]);
+  const [selectedCallerId, setSelectedCallerId] = useState('');
+  const timerRef = useRef(null);
+  const audioCtx = useRef(null);
+
+  useEffect(() => {
+    apiFetch('/agents/caller-ids').then(data => {
+      if (data && Array.isArray(data)) { setCallerIds(data); if (data.length > 0) setSelectedCallerId(data[0].phone_number); }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (callActive) {
+      timerRef.current = setInterval(() => setCallTime(t => t + 1), 1000);
+    } else {
+      clearInterval(timerRef.current);
+      setCallTime(0);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [callActive]);
+
+  const playDTMF = (digit) => {
+    try {
+      if (!audioCtx.current) audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = audioCtx.current;
+      const freqs = { '1':[697,1209],'2':[697,1336],'3':[697,1477],'4':[770,1209],'5':[770,1336],'6':[770,1477],'7':[852,1209],'8':[852,1336],'9':[852,1477],'*':[941,1209],'0':[941,1336],'#':[941,1477] };
+      const f = freqs[digit];
+      if (!f) return;
+      const osc1 = ctx.createOscillator(), osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc1.frequency.value = f[0]; osc2.frequency.value = f[1];
+      osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+      osc1.start(); osc2.start();
+      osc1.stop(ctx.currentTime + 0.15); osc2.stop(ctx.currentTime + 0.15);
+    } catch(e) {}
+  };
+
+  const pressKey = (digit) => {
+    playDTMF(digit);
+    if (callActive && callId) {
+      apiFetch('/calls/dtmf', { method: 'POST', body: JSON.stringify({ call_id: callId, digit }) });
+    }
+    setNumber(n => n + digit);
+  };
+
+  const startCall = async () => {
+    if (!number) return;
+    const call = await apiFetch('/calls', { method: 'POST', body: JSON.stringify({ direction: 'outbound', called_number: number, caller_id: selectedCallerId, status: 'answered', start_time: new Date() }) });
+    if (call) { setCallId(call.id); setCallActive(true); }
+  };
+
+  const endCall = async () => {
+    if (callId) await apiFetch('/calls/' + callId, { method: 'PUT', body: JSON.stringify({ status: 'completed', end_time: new Date(), duration: callTime }) });
+    setCallActive(false); setCallId(null);
+  };
+
+  const formatTime = (s) => String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+
+  const keys = [
+    {d:'1',s:''},{d:'2',s:'ABC'},{d:'3',s:'DEF'},
+    {d:'4',s:'GHI'},{d:'5',s:'JKL'},{d:'6',s:'MNO'},
+    {d:'7',s:'PQRS'},{d:'8',s:'TUV'},{d:'9',s:'WXYZ'},
+    {d:'*',s:''},{d:'0',s:'+'},{d:'#',s:''}
+  ];
+
+  return (
+    <div className="content">
+      <div style={{maxWidth:400,margin:'0 auto'}}>
+        <div className="card" style={{textAlign:'center'}}>
+          <div style={{fontSize:16,fontWeight:600,marginBottom:20,color:'#9ca3af'}}>
+            📞 Dialer DTMF · Solde: <span style={{color:'#10b981',fontWeight:700}}>{parseFloat(user.credits||0).toFixed(2)} €</span>
+          </div>
+          
+          {callerIds.length > 0 && (
+            <div className="form-group" style={{textAlign:'left'}}>
+              <label className="label">ID Appelant</label>
+              <select className="select" value={selectedCallerId} onChange={e => setSelectedCallerId(e.target.value)}>
+                {callerIds.map(c => <option key={c.id} value={c.phone_number}>{c.label || c.phone_number}</option>)}
+              </select>
+            </div>
+          )}
+
+          <div className="display">{number || <span style={{color:'#4b5563'}}>Entrez un numéro</span>}</div>
+          
+          {callActive && <div className="timer">⏱ {formatTime(callTime)}</div>}
+
+          <div className="dialer">
+            <div className="keypad">
+              {keys.map(k => (
+                <button key={k.d} className="key" onClick={() => pressKey(k.d)}>
+                  {k.d}
+                  {k.s && <span className="key-sub">{k.s}</span>}
+                </button>
+              ))}
+            </div>
+
+            <div className="call-controls">
+              <button className="btn btn-sm" style={{background:'#374151',color:'#9ca3af'}} onClick={() => setNumber(n => n.slice(0,-1))}>⌫</button>
+              {!callActive ? (
+                <button className="call-btn green" onClick={startCall} title="Appeler">📞</button>
+              ) : (
+                <button className="call-btn red" onClick={endCall} title="Raccrocher">📵</button>
+              )}
+              <button className="btn btn-sm" style={{background:'#374151',color:'#9ca3af'}} onClick={() => setNumber('')}>✕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== ADMIN DASHBOARD =====
+function AdminDashboard() {
+  const [stats, setStats] = useState(null);
+  useEffect(() => { apiFetch('/admin/analytics').then(d => d && setStats(d)); }, []);
+  if (!stats) return <div className="content"><div style={{color:'#9ca3af'}}>Chargement...</div></div>;
+  return (
+    <div className="content">
+      <div className="grid-4" style={{marginBottom:20}}>
+        <div className="stat-card"><div className="stat-value">{stats.totalUsers}</div><div className="stat-label">Agents</div></div>
+        <div className="stat-card"><div className="stat-value">{stats.totalClients}</div><div className="stat-label">Clients</div></div>
+        <div className="stat-card"><div className="stat-value">{stats.totalCalls}</div><div className="stat-label">Appels Total</div></div>
+        <div className="stat-card"><div className="stat-value" style={{color:'#10b981'}}>{stats.activeCalls}</div><div className="stat-label">En Cours</div></div>
+      </div>
+      <div className="grid-2">
+        <div className="card">
+          <h3 style={{marginBottom:15}}>Agents en ligne</h3>
+          <table className="table">
+            <thead><tr><th>Agent</th><th>Statut</th><th>Crédits</th></tr></thead>
+            <tbody>{(stats.agents||[]).map(a => (
+              <tr key={a.id}><td>{a.username}</td>
+              <td><span className={"status-dot status-"+(a.AgentStatus?.status||'offline')}></span>{a.AgentStatus?.status||'offline'}</td>
+              <td>{parseFloat(a.credits||0).toFixed(2)} €</td></tr>
+            ))}</tbody>
+          </table>
+        </div>
+        <div className="card">
+          <h3 style={{marginBottom:15}}>Appels récents</h3>
+          <table className="table">
+            <thead><tr><th>Agent</th><th>Numéro</th><th>Statut</th></tr></thead>
+            <tbody>{(stats.recentCalls||[]).map(c => (
+              <tr key={c.id}><td>{c.User?.username||'-'}</td><td>{c.called_number||'-'}</td>
+              <td><span style={{color: c.status==='completed'?'#10b981':c.status==='answered'?'#f59e0b':'#ef4444'}}>{c.status}</span></td></tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== USERS PAGE =====
+function UsersPage() {
+  const [users, setUsers] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ username:'', email:'', password:'', role:'agent', credits:0 });
+  const [editId, setEditId] = useState(null);
+  const [creditsModal, setCreditsModal] = useState(null);
+  const [creditsAmount, setCreditsAmount] = useState('');
+
+  useEffect(() => { loadUsers(); }, []);
+  const loadUsers = () => apiFetch('/admin/users').then(d => d && setUsers(d));
+
+  const save = async (e) => {
+    e.preventDefault();
+    if (editId) await apiFetch('/admin/users/' + editId, { method: 'PUT', body: JSON.stringify(form) });
+    else await apiFetch('/admin/users', { method: 'POST', body: JSON.stringify(form) });
+    setShowModal(false); setEditId(null); setForm({ username:'', email:'', password:'', role:'agent', credits:0 });
+    loadUsers();
+  };
+
+  const addCredits = async () => {
+    await apiFetch('/admin/credits', { method: 'POST', body: JSON.stringify({ user_id: creditsModal.id, amount: parseFloat(creditsAmount), type: 'topup', description: 'Recharge manuelle' }) });
+    setCreditsModal(null); setCreditsAmount(''); loadUsers();
+  };
+
+  return (
+    <div className="content">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+        <h2>Gestion des utilisateurs</h2>
+        <button className="btn btn-primary" onClick={() => { setEditId(null); setForm({ username:'', email:'', password:'', role:'agent', credits:0 }); setShowModal(true); }}>+ Ajouter</button>
+      </div>
+      <div className="card">
+        <table className="table">
+          <thead><tr><th>Utilisateur</th><th>Email</th><th>Rôle</th><th>Crédits</th><th>Statut</th><th>Actions</th></tr></thead>
+          <tbody>{users.map(u => (
+            <tr key={u.id}>
+              <td>{u.username}</td><td>{u.email}</td>
+              <td><span className="badge" style={{background: u.role==='admin'?'#7c3aed':'#374151'}}>{u.role}</span></td>
+              <td>{parseFloat(u.credits||0).toFixed(2)} €</td>
+              <td><span style={{color: u.is_active?'#10b981':'#ef4444'}}>{u.is_active?'Actif':'Inactif'}</span></td>
+              <td>
+                <button className="btn btn-sm btn-primary" style={{marginRight:5}} onClick={() => { setEditId(u.id); setForm({username:u.username,email:u.email,password:'',role:u.role,credits:u.credits}); setShowModal(true); }}>Éditer</button>
+                <button className="btn btn-sm btn-success" onClick={() => setCreditsModal(u)}>Crédits</button>
+              </td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">{editId ? 'Modifier' : 'Ajouter'} un utilisateur</div>
+            <form onSubmit={save}>
+              <div className="form-group"><label className="label">Nom d'utilisateur</label><input className="input" value={form.username} onChange={e => setForm({...form, username:e.target.value})} required /></div>
+              <div className="form-group"><label className="label">Email</label><input className="input" type="email" value={form.email} onChange={e => setForm({...form, email:e.target.value})} required /></div>
+              <div className="form-group"><label className="label">Mot de passe {editId && '(laisser vide pour ne pas changer)'}</label><input className="input" type="password" value={form.password} onChange={e => setForm({...form, password:e.target.value})} /></div>
+              <div className="form-group"><label className="label">Rôle</label><select className="select" value={form.role} onChange={e => setForm({...form, role:e.target.value})}><option value="agent">Agent</option><option value="admin">Admin</option></select></div>
+              <div className="form-group"><label className="label">Crédits initiaux</label><input className="input" type="number" value={form.credits} onChange={e => setForm({...form, credits:e.target.value})} /></div>
+              <div className="modal-footer"><button type="button" className="btn" style={{background:'#374151'}} onClick={() => setShowModal(false)}>Annuler</button><button type="submit" className="btn btn-primary">Sauvegarder</button></div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {creditsModal && (
+        <div className="modal-overlay" onClick={() => setCreditsModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">Ajouter des crédits à {creditsModal.username}</div>
+            <div className="form-group"><label className="label">Montant (€)</label><input className="input" type="number" step="0.01" value={creditsAmount} onChange={e => setCreditsAmount(e.target.value)} placeholder="10.00" /></div>
+            <div className="modal-footer"><button className="btn" style={{background:'#374151'}} onClick={() => setCreditsModal(null)}>Annuler</button><button className="btn btn-success" onClick={addCredits}>Ajouter</button></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== CLIENTS PAGE =====
+function ClientsPage() {
+  const [clients, setClients] = useState([]);
+  const [search, setSearch] = useState('');
+  useEffect(() => { apiFetch('/clients?search=' + search).then(d => d && setClients(d.clients || [])); }, [search]);
+  return (
+    <div className="content">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+        <h2>Clients</h2>
+        <input className="input" style={{width:250}} placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+      <div className="card">
+        <table className="table">
+          <thead><tr><th>Nom</th><th>Téléphone</th><th>Email</th><th>Entreprise</th></tr></thead>
+          <tbody>{clients.map(c => <tr key={c.id}><td>{c.name}</td><td>{c.phone_number}</td><td>{c.email||'-'}</td><td>{c.company||'-'}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ===== CALLS PAGE =====
+function CallsPage() {
+  const [calls, setCalls] = useState([]);
+  useEffect(() => { apiFetch('/calls').then(d => d && setCalls(Array.isArray(d) ? d : [])); }, []);
+  return (
+    <div className="content">
+      <h2 style={{marginBottom:20}}>Historique des appels</h2>
+      <div className="card">
+        <table className="table">
+          <thead><tr><th>Agent</th><th>Numéro</th><th>Direction</th><th>Durée</th><th>Statut</th><th>Date</th></tr></thead>
+          <tbody>{calls.map(c => (
+            <tr key={c.id}>
+              <td>{c.User?.username||'-'}</td><td>{c.called_number||'-'}</td>
+              <td>{c.direction}</td><td>{c.duration}s</td>
+              <td><span style={{color: c.status==='completed'?'#10b981':c.status==='answered'?'#f59e0b':'#ef4444'}}>{c.status}</span></td>
+              <td>{new Date(c.created_at).toLocaleString('fr-FR')}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ===== MAIN APP =====
+function App() {
+  const [user, setUser] = useState(null);
+  const [page, setPage] = useState('dialer');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('voip_token');
+    if (token) {
+      authToken = token;
+      apiFetch('/auth/me').then(data => {
+        if (data && data.id) { setUser(data); setPage(data.role === 'admin' ? 'dashboard' : 'dialer'); }
+        setLoading(false);
+      });
+    } else setLoading(false);
+
+    // Handle hash routing
+    const onHash = () => {
+      const h = window.location.hash.replace('#','');
+      if (h === 'login') { localStorage.removeItem('voip_token'); authToken = null; setUser(null); }
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  const logout = () => { localStorage.removeItem('voip_token'); authToken = null; setUser(null); };
+
+  if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',color:'#9ca3af'}}>Chargement...</div>;
+  if (!user) return <Login onLogin={(u) => { setUser(u); setPage(u.role === 'admin' ? 'dashboard' : 'dialer'); }} />;
+
+  const isAdmin = user.role === 'admin';
+  const agentNav = [
+    { id:'dialer', label:'📞 Dialer' },
+    { id:'calls', label:'📋 Appels' },
+    { id:'clients', label:'👥 Clients' },
+  ];
+  const adminNav = [
+    { id:'dashboard', label:'📊 Dashboard' },
+    { id:'users', label:'👤 Utilisateurs' },
+    { id:'clients', label:'👥 Clients' },
+    { id:'calls', label:'📋 Appels' },
+  ];
+  const nav = isAdmin ? adminNav : agentNav;
+
+  const renderPage = () => {
+    switch(page) {
+      case 'dialer': return <Dialer user={user} />;
+      case 'dashboard': return <AdminDashboard />;
+      case 'users': return <UsersPage />;
+      case 'clients': return <ClientsPage />;
+      case 'calls': return <CallsPage />;
+      default: return <Dialer user={user} />;
+    }
+  };
+
+  return (
+    <div className="app">
+      <div className="sidebar">
+        <div className="sidebar-logo">📞 VoIP CRM</div>
+        {nav.map(n => <div key={n.id} className={"sidebar-item" + (page===n.id?' active':'')} onClick={() => setPage(n.id)}>{n.label}</div>)}
+        <div style={{flex:1}}></div>
+        <div className="sidebar-item" onClick={logout} style={{color:'#ef4444'}}>🚪 Déconnexion</div>
+      </div>
+      <div className="main">
+        <div className="topbar">
+          <div className="topbar-title">{nav.find(n=>n.id===page)?.label || 'VoIP CRM'}</div>
+          <div className="user-info">
+            <span>{user.username}</span>
+            <span className="badge">{user.role}</span>
+          </div>
+        </div>
+        {renderPage()}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
