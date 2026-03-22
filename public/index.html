@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoIP CRM</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        #root { max-width: 800px; margin: 20px auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        nav { background-color: #333; padding: 10px 0; text-align: center; }
+        nav a { color: white; margin: 0 15px; text-decoration: none; font-weight: bold; }
+        nav a:hover { text-decoration: underline; }
+        .dialer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 300px; margin: 20px auto; }
+        .dialer-button { padding: 20px; font-size: 1.5em; border: 1px solid #ccc; background-color: #eee; cursor: pointer; border-radius: 5px; }
+        .dialer-button:hover { background-color: #ddd; }
+        .display { width: calc(100% - 20px); padding: 10px; font-size: 1.8em; text-align: center; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        .login-form { display: flex; flex-direction: column; max-width: 300px; margin: 20px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        .login-form input { margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .login-form button { padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .login-form button:hover { background-color: #0056b3; }
+        .admin-dashboard { margin-top: 20px; }
+        .admin-dashboard h2 { text-align: center; color: #333; }
+        .admin-dashboard table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .admin-dashboard th, .admin-dashboard td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .admin-dashboard th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { BrowserRouter: Router, Route, Link, Routes, useNavigate } = ReactRouterDOM;
+
+        // Basic Auth Context
+        const AuthContext = React.createContext(null);
+
+        const AuthProvider = ({ children }) => {
+            const [user, setUser] = useState(null);
+            const [token, setToken] = useState(localStorage.getItem('token'));
+
+            useEffect(() => {
+                if (token) {
+                    // In a real app, validate token with backend
+                    // For this example, we'll just assume it's valid
+                    const decoded = JSON.parse(atob(token.split('.')[1])); // Basic JWT decode
+                    setUser({ id: decoded.id, username: decoded.username, role: decoded.role });
+                }
+            }, [token]);
+
+            const login = async (username, password) => {
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        localStorage.setItem('token', data.token);
+                        setToken(data.token);
+                        const decoded = JSON.parse(atob(data.token.split('.')[1]));
+                        setUser({ id: decoded.id, username: decoded.username, role: decoded.role });
+                        return true;
+                    } else {
+                        alert(data.message || 'Login failed');
+                        return false;
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    alert('Login failed due to network error');
+                    return false;
+                }
+            };
+
+            const logout = () => {
+                localStorage.removeItem('token');
+                setToken(null);
+                setUser(null);
+            };
+
+            return (
+                <AuthContext.Provider value={{ user, token, login, logout }}>
+                    {children}
+                </AuthContext.Provider>
+            );
+        };
+
+        const PrivateRoute = ({ children, roles }) => {
+            const { user, token } = React.useContext(AuthContext);
+            const navigate = useNavigate();
+
+            useEffect(() => {
+                if (!token) {
+                    navigate('/login');
+                } else if (roles && user && !roles.includes(user.role)) {
+                    navigate('/'); // Redirect if not authorized
+                }
+            }, [token, user, roles, navigate]);
+
+            return token && (!roles || (user && roles.includes(user.role))) ? children : null;
+        };
+
+        const LoginPage = () => {
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const { login } = React.useContext(AuthContext);
+            const navigate = useNavigate();
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (await login(username, password)) {
+                    navigate('/');
+                }
+            };
+
+            return (
+                <form className="login-form" onSubmit={handleSubmit}>
+                    <h2>Login</h2>
+                    <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
+                    <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                    <button type="submit">Login</button>
+                </form>
+            );
+        };
+
+        const Dialer = () => {
+            const [display, setDisplay] = useState('');
+            const { user } = React.useContext(AuthContext);
+
+            const handleDial = (digit) => {
+                setDisplay(prev => prev + digit);
+            };
+
+            const handleCall = () => {
+                alert(`Calling ${display}...`);
+                // In a real app, initiate WebSocket call
+            };
+
+            const handleClear = () => {
+                setDisplay('');
+            };
+
+            if (!user) return <p>Please log in to use the dialer.</p>;
+
+            return (
+                <div>
+                    <h2>DTMF Dialer</h2>
+                    <input type="text" className="display" value={display} readOnly />
+                    <div className="dialer-grid">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, '*', 0, '#'].map(digit => (
+                            <button key={digit} className="dialer-button" onClick={() => handleDial(digit)}>{digit}</button>
+                        ))}
+                        <button className="dialer-button" onClick={handleClear}>Clear</button>
+                        <button className="dialer-button" onClick={handleCall}>Call</button>
+                    </div>
+                </div>
+            );
+        };
+
+        const AdminDashboard = () => {
+            const { token } = React.useContext(AuthContext);
+            const [users, setUsers] = useState([]);
+            const [clients, setClients] = useState([]);
+            const [calls, setCalls] = useState([]);
+
+            useEffect(() => {
+                const fetchData = async () => {
+                    if (!token) return;
+                    try {
+                        const usersRes = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
+                        const usersData = await usersRes.json();
+                        setUsers(usersData);
+
+                        const clientsRes = await fetch('/api/clients', { headers: { 'Authorization': `Bearer ${token}` } });
+                        const clientsData = await clientsRes.json();
+                        setClients(clientsData);
+
+                        const callsRes = await fetch('/api/calls', { headers: { 'Authorization': `Bearer ${token}` } });
+                        const callsData = await callsRes.json();
+                        setCalls(callsData);
+
+                    } catch (error) {
+                        console.error('Failed to fetch admin data:', error);
+                    }
+                };
+                fetchData();
+            }, [token]);
+
+            return (
+                <div className="admin-dashboard">
+                    <h2>Admin Dashboard</h2>
+                    <h3>Users</h3>
+                    <table>
+                        <thead>
+                            <tr><th>ID</th><th>Username</th><th>Role</th></tr>
+                        </thead>
+                        <tbody>
+                            {users.map(user => (
+                                <tr key={user.id}><td>{user.id}</td><td>{user.username}</td><td>{user.role}</td></tr>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    <h3>Clients</h3>
+                    <table>
+                        <thead>
+                            <tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th></tr>
+                        </thead>
+                        <tbody>
+                            {clients.map(client => (
+                                <tr key={client.id}><td>{client.id}</td><td>{client.name}</td><td>{client.phone}</td><td>{client.email}</td></tr>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    <h3>Calls</h3>
+                    <table>
+                        <thead>
+                            <tr><th>ID</th><th>Agent ID</th><th>Client ID</th><th>Duration</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                            {calls.map(call => (
+                                <tr key={call.id}><td>{call.id}</td><td>{call.agentId}</td><td>{call.clientId}</td><td>{call.duration}s</td><td>{call.status}</td></tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const { user, logout } = React.useContext(AuthContext);
+
+            return (
+                <Router>
+                    <nav>
+                        <Link to="/">Dialer</Link>
+                        {user && user.role === 'admin' && <Link to="/admin">Admin</Link>}
+                        {user ? (
+                            <a href="#" onClick={logout}>Logout ({user.username})</a>
+                        ) : (
+                            <Link to="/login">Login</Link>
+                        )}
+                    </nav>
+                    <Routes>
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/" element={<PrivateRoute><Dialer /></PrivateRoute>} />
+                        <Route path="/admin" element={<PrivateRoute roles={['admin']}><AdminDashboard /></PrivateRoute>} />
+                    </Routes>
+                </Router>
+            );
+        };
+
+        ReactDOM.render(
+            <AuthProvider>
+                <App />
+            </AuthProvider>,
+            document.getElementById('root')
+        );
+    </script>
+    <script src="https://unpkg.com/react-router-dom@6/dist/umd/react-router-dom.development.js"></script>
+</body>
+</html>
