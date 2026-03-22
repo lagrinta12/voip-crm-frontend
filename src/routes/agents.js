@@ -1,37 +1,66 @@
-const router = require('express').Router();
-const { User, AgentStatus, Call } = require('../models');
-const { authenticate } = require('../middleware/auth');
+const express = require('express');
+const { User, AgentStatus, Call, CallerId } = require('../models');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 
-router.use(authenticate);
+const router = express.Router();
 
-router.get('/status', async (req, res) => {
+router.post('/status', authenticate, async (req, res) => {
   try {
-    const agents = await User.findAll({
-      where: { role: 'agent', is_active: true },
-      include: [{ model: AgentStatus }],
-      attributes: ['id', 'username', 'email', 'credits']
-    });
+    const { status } = req.body;
+    const validStatuses = ['available', 'busy', 'offline', 'on_call', 'break'];
+    if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Statut invalide' });
+    await AgentStatus.upsert({ user_id: req.user.id, status, last_update: new Date() });
+    if (global.wss) {
+      const msg = JSON.stringify({ type: 'agent_status_changed', userId: req.user.id, username: req.user.username, status });
+      global.wss.clients.forEach(ws => ws.send(msg));
+    }
+    res.json({ user_id: req.user.id, status });
+  } catch (error) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.get('/status', authenticate, async (req, res) => {
+  try {
+    const agents = await AgentStatus.findAll({ include: [{ model: User, attributes: ['id', 'username', 'role', 'sip_username'] }] });
     res.json(agents);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch (error) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
-router.put('/status', async (req, res) => {
+router.get('/caller-ids', authenticate, async (req, res) => {
   try {
-    const [status, created] = await AgentStatus.findOrCreate({
-      where: { user_id: req.user.id },
-      defaults: { status: req.body.status, last_update: new Date() }
-    });
-    if (!created) await status.update({ status: req.body.status, last_update: new Date() });
-    res.json(status);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    const callerIds = await CallerId.findAll({ where: { user_id: req.user.id }, order: [['is_default', 'DESC']] });
+    res.json(callerIds);
+  } catch (error) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
-router.get('/caller-ids', async (req, res) => {
+router.post('/caller-ids', authenticate, async (req, res) => {
   try {
-    const { CallerId } = require('../models');
-    const ids = await CallerId.findAll({ where: { user_id: req.user.id } });
-    res.json(ids);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    const { phone_number, label } = req.body;
+    const callerId = await CallerId.create({ user_id: req.user.id, phone_number, label, is_verified: req.user.role === 'admin' });
+    res.status(201).json(callerId);
+  } catch (error) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+router.put('/caller-ids/:id', authenticate, async (req, res) => {
+  try {
+    const callerId = await CallerId.findOne({ where: { id: req.params.id, user_id: req.user.id } });
+    if (!callerId) return res.status(404).json({ error: 'Caller ID non trouve' });
+    const { phone_number, label } = req.body;
+    if (phone_number) callerId.phone_number = phone_number;
+    if (label !== undefined) callerId.label = label;
+    await callerId.save();
+    res.json(callerId);
+  } catch (error) { res.status(500).json({ error: 'Erreur serveur' }); }
+});
+
+router.delete('/caller-ids/:id', authenticate, async (req, res) => {
+  try {
+    const callerId = await CallerId.findOne({ where: { id: req.params.id, user_id: req.user.id } });
+    if (!callerId) return res.status(404).json({ error: 'Caller ID non trouve' });
+    await callerId.destroy();
+    res.json({ message: 'Caller ID supprime' });
+  } catch (error) { res.status(500).json({ error: 'Erreur serveur' }); }
 });
 
 module.exports = router;
