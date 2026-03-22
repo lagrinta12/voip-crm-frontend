@@ -4,8 +4,5 @@ nixPkgs = ["nodejs_22", "npm-9_x"]
 [phases.install]
 cmds = ["npm install --production --no-optional"]
 
-[phases.build]
-cmds = []
-
 [start]
 cmd = "node src/server.js"
