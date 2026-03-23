@@ -189,7 +189,7 @@ router.post('/webhook', async (req, res) => {
     const callControlId = payload && payload.call_control_id;
     let call = null;
     if (callControlId) {
-      const calls = await Call.findAll({ where: { status: { [Op.in]: ['ringing', 'answered', 'in_progress'] } }, order: [['start_time', 'DESC']], limit: 50 });
+      const calls = await Call.findAll({ where: { status: { [Op.in]: ['ringing', 'answered', 'failed'] } }, order: [['start_time', 'DESC']], limit: 50 });
       for (const c of calls) { try { const notes = JSON.parse(c.notes || '{}'); if (notes.call_control_id === callControlId) { call = c; break; } } catch (e) {} }
     }
 
