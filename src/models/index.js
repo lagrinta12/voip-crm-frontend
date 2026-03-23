@@ -61,6 +61,7 @@ const Call = sequelize.define('Call', {
   cost: { type: DataTypes.DECIMAL(10, 4), defaultValue: 0 },
   status: { type: DataTypes.ENUM('ringing','answered','completed','failed','missed','busy'), defaultValue: 'ringing' },
   recording_url: { type: DataTypes.STRING(500) },
+  notes: { type: DataTypes.TEXT },
 }, { tableName: 'calls', timestamps: true, underscored: true });
 
 const AgentStatus = sequelize.define('AgentStatus', {
